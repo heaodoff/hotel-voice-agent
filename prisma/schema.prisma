@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CallStatus {
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  TRANSFERRED
+  NO_ANSWER
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  MODIFIED
+  CANCELLED
+  NO_SHOW
+  CHECKED_IN
+  CHECKED_OUT
+}
+
+enum HandoffReason {
+  CALLER_REQUEST
+  CALLER_FRUSTRATED
+  GROUP_BOOKING
+  PAYMENT_ISSUE
+  TOOL_FAILURE
+  VIP_REQUEST
+  UNSUPPORTED_REQUEST
+  AGENT_UNCERTAINTY
+}
+
+model Hotel {
+  id           String   @id @default(cuid())
+  name         String
+  timezone     String   @default("America/New_York")
+  phoneNumber  String   @unique @map("phone_number")
+  handoffPhone String?  @map("handoff_phone") // per-hotel human transfer number
+  address      String?
+  greeting     String?  // custom voice greeting text
+  checkInTime  String   @default("15:00") @map("check_in_time")
+  checkOutTime String   @default("11:00") @map("check_out_time")
+  policies     Json?    // parking, pets, breakfast, etc.
+  pmsProvider  String   @default("mock") @map("pms_provider") // mock, cloudbeds, mews, opera
+  pmsConfig    Json?    @map("pms_config") // PMS connection config
+  billingPlan  String   @default("starter") @map("billing_plan") // starter, growth, enterprise
+  billingEmail String?  @map("billing_email") // invoice recipient
+  includedMinutes Int   @default(500) @map("included_minutes") // monthly included minutes
+  pricePerMinute  Decimal @default(0.20) @map("price_per_minute") @db.Decimal(6, 4) // overage rate
+  monthlyPrice    Decimal @default(299) @map("monthly_price") @db.Decimal(10, 2)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  calls        Call[]
+  reservations Reservation[]
+  usageRecords UsageRecord[]
+
+  @@map("hotels")
+}
+
+model UsageRecord {
+  id              String   @id @default(cuid())
+  hotelId         String   @map("hotel_id")
+  periodStart     DateTime @map("period_start") @db.Date // first day of month
+  periodEnd       DateTime @map("period_end") @db.Date // last day of month
+  totalCalls      Int      @default(0) @map("total_calls")
+  completedCalls  Int      @default(0) @map("completed_calls")
+  totalMinutes    Int      @default(0) @map("total_minutes") // seconds / 60 rounded up
+  totalReservations Int    @default(0) @map("total_reservations")
+  revenue         Decimal  @default(0) @map("revenue") @db.Decimal(10, 2) // booking revenue
+  includedMinutes Int      @default(500) @map("included_minutes")
+  overageMinutes  Int      @default(0) @map("overage_minutes")
+  overageCost     Decimal  @default(0) @map("overage_cost") @db.Decimal(10, 2)
+  totalCost       Decimal  @default(0) @map("total_cost") @db.Decimal(10, 2) // monthly + overage
+  status          String   @default("open") // open, closed, invoiced
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  hotel Hotel @relation(fields: [hotelId], references: [id])
+
+  @@unique([hotelId, periodStart])
+  @@index([hotelId])
+  @@index([periodStart])
+  @@map("usage_records")
+}
+
+model Guest {
+  id           String   @id @default(cuid())
+  firstName    String?  @map("first_name")
+  lastName     String?  @map("last_name")
+  phoneNumber  String   @map("phone_number")
+  email        String?
+  language     String   @default("en") // detected language code
+  preferences  Json?    // guest preferences and notes
+  totalCalls   Int      @default(0) @map("total_calls")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  calls        Call[]
+  reservations Reservation[]
+
+  @@unique([phoneNumber])
+  @@map("guests")
+}
+
+model Call {
+  id                String     @id @default(cuid())
+  twilioCallSid     String     @unique @map("twilio_call_sid")
+  hotelId           String     @map("hotel_id")
+  guestId           String?    @map("guest_id")
+  callerNumber      String     @map("caller_number")
+  status            CallStatus @default(RINGING)
+  direction         String     @default("inbound")
+  language          String?    // detected language
+  duration          Int?       // seconds
+  transcriptSummary String?    @map("transcript_summary")
+  recordingUrl      String?    @map("recording_url")
+  recordingSid      String?    @map("recording_sid")
+  startedAt         DateTime   @default(now()) @map("started_at")
+  endedAt           DateTime?  @map("ended_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  hotel     Hotel       @relation(fields: [hotelId], references: [id])
+  guest     Guest?      @relation(fields: [guestId], references: [id])
+  events    CallEvent[]
+  toolLogs  ToolLog[]
+  handoffs  HandoffEvent[]
+  sessions  ConversationSession[]
+
+  @@index([hotelId])
+  @@index([callerNumber])
+  @@index([startedAt])
+  @@map("calls")
+}
+
+model CallEvent {
+  id        String   @id @default(cuid())
+  callId    String   @map("call_id")
+  event     String   // e.g. "call.started", "call.ended", "stream.connected"
+  data      Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  call Call @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@map("call_events")
+}
+
+model Reservation {
+  id                    String            @id @default(cuid())
+  externalReservationId String?           @unique @map("external_reservation_id")
+  hotelId               String            @map("hotel_id")
+  guestId               String            @map("guest_id")
+  status                ReservationStatus @default(PENDING)
+  checkInDate           DateTime          @map("check_in_date") @db.Date
+  checkOutDate          DateTime          @map("check_out_date") @db.Date
+  roomType              String            @map("room_type")
+  roomCount             Int               @default(1) @map("room_count")
+  guestCount            Int               @default(1) @map("guest_count")
+  totalPrice            Decimal?          @map("total_price") @db.Decimal(10, 2)
+  currency              String            @default("USD")
+  specialRequests       String?           @map("special_requests")
+  confirmationCode      String?           @unique @map("confirmation_code")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  hotel  Hotel              @relation(fields: [hotelId], references: [id])
+  guest  Guest              @relation(fields: [guestId], references: [id])
+  events ReservationEvent[]
+
+  @@index([hotelId])
+  @@index([guestId])
+  @@index([checkInDate, checkOutDate])
+  @@index([confirmationCode])
+  @@map("reservations")
+}
+
+model ReservationEvent {
+  id            String   @id @default(cuid())
+  reservationId String   @map("reservation_id")
+  event         String   // e.g. "created", "modified", "cancelled"
+  previousState Json?    @map("previous_state")
+  newState      Json?    @map("new_state")
+  triggeredBy   String   @map("triggered_by") // "ai_agent", "admin", "guest"
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@map("reservation_events")
+}
+
+model ConversationSession {
+  id        String   @id @default(cuid())
+  callId    String   @map("call_id")
+  openaiSessionId String? @map("openai_session_id")
+  state     Json?    // current conversation state snapshot
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  call Call @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@map("conversation_sessions")
+}
+
+model ToolLog {
+  id         String   @id @default(cuid())
+  callId     String   @map("call_id")
+  toolName   String   @map("tool_name")
+  input      Json
+  output     Json?
+  error      String?
+  durationMs Int?     @map("duration_ms")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  call Call @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@index([toolName])
+  @@index([createdAt])
+  @@map("tool_logs")
+}
+
+model HandoffEvent {
+  id          String        @id @default(cuid())
+  callId      String        @map("call_id")
+  reason               HandoffReason
+  description          String?
+  conversationSummary  String?       @map("conversation_summary")
+  transferTo           String?       @map("transfer_to") // phone number or queue
+  success              Boolean       @default(false)
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  call Call @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@index([callId])
+  @@map("handoff_events")
+}

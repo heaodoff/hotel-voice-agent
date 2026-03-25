@@ -1,0 +1,10 @@
+{$DOMAIN} {
+    reverse_proxy app:3000
+
+    # WebSocket support for Twilio media streams
+    @websocket {
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+    reverse_proxy @websocket app:3000
+}
