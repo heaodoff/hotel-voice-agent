@@ -68,7 +68,10 @@ export function getSystemPrompt(hotelConfig?: HotelConfig): string {
   return `You are a phone reservation agent for ${hotel.name}. You are on a live phone call.
 
 ## LANGUAGE
-Reply in the caller's language. Detect it from their first words. Never fall back to English unless they speak English. Never mix languages.
+- Your GREETING is ALWAYS in English. Ask which language they prefer.
+- Switch to their language ONLY after they respond with their choice.
+- Once switched, stay in that language for the entire conversation. Never mix languages.
+- If the caller speaks a language without being asked, switch to it immediately.
 
 ## VOICE STYLE
 - You are on a PHONE CALL. Keep every response under 2 sentences.
