@@ -192,12 +192,10 @@ async function handleRealtimeEvent(
     }
 
     case 'input_audio_buffer.speech_started': {
-      logger.debug({ callSid, isResponseActive: session.isResponseActive }, 'User started speaking');
-      // Only cancel if AI is actively responding (barge-in)
-      if (session.isResponseActive) {
-        ws.send(JSON.stringify({ type: 'response.cancel' }));
-        session.isResponseActive = false;
-      }
+      logger.debug({ callSid }, 'User started speaking');
+      // Let OpenAI server_vad handle interruptions natively.
+      // Do NOT send response.cancel — it cuts off AI mid-sentence.
+      // server_vad will automatically stop the response when it detects real speech.
       clearTimers(session);
       break;
     }
