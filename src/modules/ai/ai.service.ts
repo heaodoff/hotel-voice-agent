@@ -170,8 +170,8 @@ async function handleRealtimeEvent(
       const customGreeting = session.hotelConfig?.greeting;
 
       const greetingInstruction = customGreeting
-        ? `[System: The caller just connected. Greet them with: "${customGreeting}" Then offer language choice briefly. After the greeting, wait for the caller to respond.]`
-        : `[System: The caller just connected. Greet them warmly with a short multilingual greeting. Say the hotel name, then offer language choice. Example: "Hello! Welcome to ${hotelName}. For English, stay on the line. Para español, diga 'español'. Pour le français, dites 'français'. Для русского скажите 'русский'." Keep it brief and natural — this is a phone greeting, not a lecture. After the greeting, wait for the caller to respond.]`;
+        ? `[System: Caller connected. Say: "${customGreeting}" Then wait.]`
+        : `[System: Caller connected. Say exactly: "Thank you for calling ${hotelName}! English, español, français, или русский?" Then stop and wait for their response. Say NOTHING else until they speak.]`;
 
       ws.send(JSON.stringify({
         type: 'conversation.item.create',
