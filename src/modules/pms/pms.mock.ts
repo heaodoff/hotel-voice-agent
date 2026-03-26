@@ -102,10 +102,8 @@ export class MockPmsProvider implements PmsProvider {
     logger.info({ input }, 'Checking availability');
 
     const nights = countNights(input.checkInDate, input.checkOutDate);
-    const guestCount = input.guestCount ?? 1;
-    const allTypes = input.roomType ? [input.roomType] : (['standard', 'deluxe', 'suite', 'family', 'penthouse'] as RoomType[]);
-    // Filter by capacity — only return rooms that can fit the guest count
-    const roomTypes = allTypes.filter((type) => (MAX_CAPACITY[type] ?? 2) >= guestCount);
+    const roomTypes = input.roomType ? [input.roomType] : (['standard', 'deluxe', 'suite', 'family', 'penthouse'] as RoomType[]);
+    // Return ALL room types with maxCapacity — AI decides combinations based on guest count
 
     // Simulate some rooms being booked
     const rooms = roomTypes.map((type) => {
@@ -164,11 +162,13 @@ export class MockPmsProvider implements PmsProvider {
       throw new PmsError('Check-in date cannot be in the past');
     }
 
-    // Validate room capacity
+    // Validate room capacity (total capacity = maxCap * roomCount)
     const maxCap = MAX_CAPACITY[input.roomType] ?? 2;
+    const roomCount = input.roomCount ?? 1;
     const guests = input.guestCount ?? 1;
-    if (guests > maxCap) {
-      throw new PmsError(`Room type "${input.roomType}" has maximum capacity of ${maxCap} guests, but ${guests} requested. Please choose a larger room type.`);
+    const totalCapacity = maxCap * roomCount;
+    if (guests > totalCapacity) {
+      throw new PmsError(`${roomCount}x ${input.roomType} room(s) fit max ${totalCapacity} guests, but ${guests} requested. Add more rooms or choose a larger room type.`);
     }
 
     const nights = countNights(input.checkInDate, input.checkOutDate);
