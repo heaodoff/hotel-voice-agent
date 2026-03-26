@@ -26,6 +26,7 @@ interface RealtimeSession {
   responseTimeoutTimer: ReturnType<typeof setTimeout> | null;
   sessionConfigured: boolean;
   hotelConfig: HotelConfig | null;
+  isResponseActive: boolean;
 }
 
 // Active sessions indexed by callSid
@@ -64,6 +65,7 @@ export async function createRealtimeSession(
     responseTimeoutTimer: null,
     sessionConfigured: false,
     hotelConfig: null,
+    isResponseActive: false,
   };
   activeSessions.set(callSid, session);
 
@@ -190,9 +192,12 @@ async function handleRealtimeEvent(
     }
 
     case 'input_audio_buffer.speech_started': {
-      logger.debug({ callSid }, 'User started speaking — cancelling AI response');
-      // Barge-in: cancel current AI response so user can speak
-      ws.send(JSON.stringify({ type: 'response.cancel' }));
+      logger.debug({ callSid, isResponseActive: session.isResponseActive }, 'User started speaking');
+      // Only cancel if AI is actively responding (barge-in)
+      if (session.isResponseActive) {
+        ws.send(JSON.stringify({ type: 'response.cancel' }));
+        session.isResponseActive = false;
+      }
       clearTimers(session);
       break;
     }
@@ -231,17 +236,19 @@ async function handleRealtimeEvent(
     }
 
     case 'response.created': {
-      // Start latency timers when waiting for AI response
+      session.isResponseActive = true;
       startResponseTimers(session, prisma);
       break;
     }
 
     case 'response.done': {
+      session.isResponseActive = false;
       clearTimers(session);
       break;
     }
 
     case 'response.cancelled': {
+      session.isResponseActive = false;
       logger.debug({ callSid }, 'Response cancelled (barge-in)');
       clearTimers(session);
       break;
@@ -299,7 +306,12 @@ async function handleRealtimeEvent(
 
     case 'error': {
       const error = event['error'] as { message?: string; code?: string } | undefined;
-      logger.error({ callSid, error }, 'OpenAI Realtime error event');
+      // Suppress known non-fatal errors
+      if (error?.code === 'response_cancel_not_active') {
+        logger.debug({ callSid }, 'Cancel sent with no active response (ignored)');
+      } else {
+        logger.error({ callSid, error }, 'OpenAI Realtime error event');
+      }
       break;
     }
 
