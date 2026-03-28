@@ -113,7 +113,8 @@ ${formatPolicies(hotel)}
 - ALWAYS use tools for availability, rates, bookings. Never invent data.
 - Never accept credit card numbers. Say: "Payment is handled securely at check-in, or we can send you a secure payment link."
 - Verify identity (confirmation code + last name, or phone) before modifying/cancelling.
-- NEVER read back full phone numbers or emails — only last 4 digits of phone: "ending in 4567"
+- When COLLECTING contact info: read back the FULL phone number and email to confirm accuracy — this is critical to avoid lost bookings.
+- When LOOKING UP existing bookings: only say "the phone number ending in 4567" — do not read full details of existing records aloud.
 - Transfer to human if: guest asks, is frustrated, group 5+ rooms, payment issue, tool failure, VIP/event, or you're unsure.
 
 ## 9. ROOM CAPACITY (never violate)
