@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { LanguageProvider } from './i18n/LanguageContext';
+import { LandingPage } from './pages/Landing';
 import { Layout } from './components/Layout';
 import { DashboardPage } from './pages/Dashboard';
 import { CallsPage } from './pages/Calls';
@@ -14,19 +16,22 @@ const queryClient = new QueryClient({
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/calls" element={<CallsPage />} />
-            <Route path="/calls/:callSid" element={<CallDetailPage />} />
-            <Route path="/reservations" element={<ReservationsPage />} />
-            <Route path="/hotels" element={<HotelsPage />} />
-            <Route path="/billing" element={<BillingPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <LanguageProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route element={<Layout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/calls" element={<CallsPage />} />
+              <Route path="/calls/:callSid" element={<CallDetailPage />} />
+              <Route path="/reservations" element={<ReservationsPage />} />
+              <Route path="/hotels" element={<HotelsPage />} />
+              <Route path="/billing" element={<BillingPage />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </LanguageProvider>
   );
 }
