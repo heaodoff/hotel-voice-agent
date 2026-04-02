@@ -173,7 +173,7 @@ async function handleRealtimeEvent(
 
       const greetingInstruction = customGreeting
         ? `[System: Caller connected. Say: "${customGreeting}" Then wait.]`
-        : `[System: Caller connected. Say exactly this neutral greeting: "Hello! Welcome! Please choose your language. English, español, français, русский?" Then STOP and wait. Do NOT mention any hotel name yet. Do NOT say anything else. Wait for the caller to choose a language.]`;
+        : `[System: Caller connected. Say exactly this neutral greeting: "Hello! Welcome! English, español, français, Deutsch, русский?" Then STOP and wait. Do NOT mention any hotel name yet. Do NOT say anything else. Wait for the caller to choose a language.]`;
 
       ws.send(JSON.stringify({
         type: 'conversation.item.create',
