@@ -15,6 +15,8 @@ const envSchema = z.object({
   TWILIO_PHONE_NUMBER: z.string().min(1),
   TWILIO_WEBHOOK_BASE_URL: z.string().url(),
 
+  TELNYX_API_KEY: z.string().optional(), // Telnyx API Key v2 (for Spanish/EU numbers)
+
   OPENAI_API_KEY: z.string().startsWith('sk-'),
   OPENAI_REALTIME_MODEL: z.string().default('gpt-4o-realtime-preview-2024-12-17'),
 

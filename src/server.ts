@@ -6,6 +6,7 @@ import { getLogger } from './lib/logger.js';
 import prismaPlugin from './plugins/prisma.js';
 import redisPlugin from './plugins/redis.js';
 import { twilioRoutes } from './modules/twilio/index.js';
+import { telnyxRoutes } from './modules/telnyx/index.js';
 import { callRoutes } from './modules/calls/index.js';
 import { reservationRoutes } from './modules/reservations/index.js';
 import { hotelRoutes } from './modules/hotels/index.js';
@@ -55,6 +56,7 @@ async function start(): Promise<void> {
 
   // Routes
   await fastify.register(twilioRoutes);
+  await fastify.register(telnyxRoutes);
   await fastify.register(callRoutes);
   await fastify.register(reservationRoutes);
   await fastify.register(hotelRoutes);
